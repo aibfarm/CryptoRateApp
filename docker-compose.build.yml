@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Build Go Backend
+  backend-builder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: crypto-exchange-backend:latest
+    container_name: crypto-backend-builder
+    volumes:
+      - ./build:/output
+    command: sh -c "cp /root/main /output/crypto-exchange-api"
+
+  # Build Flutter Mobile App
+  mobile-builder:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+      target: flutter-builder
+    container_name: crypto-mobile-builder
+    volumes:
+      - ./build:/output
+    command: sh -c "cp /app/build/app/outputs/flutter-apk/app-release.apk /output/crypto-exchange-app.apk"
+
+  # Production Go API Server
+  api-server:
+    image: crypto-exchange-backend:latest
+    container_name: crypto-api-server
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+    restart: unless-stopped
+    depends_on:
+      - backend-builder
+
+networks:
+  default:
+    name: crypto-exchange-network

@@ -1,0 +1,152 @@
+name: Build and Release Crypto Exchange App
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Build and test Go backend
+      run: |
+        cd backend
+        go mod tidy
+        go test -v ./...
+        go build -o crypto-exchange-api .
+    
+    - name: Upload backend binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: crypto-exchange-api
+        path: backend/crypto-exchange-api
+
+  build-mobile:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+    
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.9'
+        channel: 'stable'
+    
+    - name: Install dependencies and build APK
+      run: |
+        cd mobile
+        flutter pub get
+        flutter test
+        flutter build apk --release
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: crypto-exchange-app-apk
+        path: mobile/build/app/outputs/flutter-apk/app-release.apk
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-mobile]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}-backend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+    
+    - name: Build and push backend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-mobile, build-docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Download backend binary
+      uses: actions/download-artifact@v3
+      with:
+        name: crypto-exchange-api
+        path: ./artifacts
+    
+    - name: Download APK
+      uses: actions/download-artifact@v3
+      with:
+        name: crypto-exchange-app-apk
+        path: ./artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./artifacts/crypto-exchange-api
+          ./artifacts/app-release.apk
+        body: |
+          ## 🚀 Crypto Exchange Rate App Release
+          
+          ### What's Included
+          - **Backend API Binary**: `crypto-exchange-api` - Ready to run Go server
+          - **Android APK**: `app-release.apk` - Install on Android devices
+          
+          ### Quick Start
+          1. Download the backend binary and run: `./crypto-exchange-api`
+          2. Install the APK on your Android device
+          3. Enjoy real-time USDT/BTC exchange rates!
+          
+          ### Docker Images
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}-backend:${{ github.ref_name }}
+          ```
+          
+          Built with ❤️ using Go and Flutter
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

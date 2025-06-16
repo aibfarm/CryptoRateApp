@@ -1,0 +1,75 @@
+# Build outputs
+build/
+*.apk
+*.exe
+crypto-exchange-api
+
+# Go
+*.mod
+go.sum
+
+# Flutter/Dart
+mobile/.dart_tool/
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+api.log
+
+# Docker
+.docker/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Node modules (if any)
+node_modules/
+node_modules_global/
+
+# Android
+mobile/android/app/debug/
+mobile/android/app/profile/
+mobile/android/app/release/
+mobile/android/.gradle/
+mobile/android/captures/
+mobile/android/gradlew
+mobile/android/gradlew.bat
+mobile/android/local.properties
+mobile/android/app/src/main/java/io/flutter/
+
+# iOS (for future)
+mobile/ios/Flutter/flutter_assets/
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Runner.xcworkspace
+
+# Flutter
+mobile/lib/generated_plugin_registrant.dart
+
+# Claude Code specific
+cmdline-tools.zip
+flutter_linux_*
+android-sdk/
